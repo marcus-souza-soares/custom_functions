@@ -6,7 +6,7 @@ My custom functions and alias to improve the productivity.
 - Put this in the your .zshrc file
 ```sh
 # custom functions
-if [ -f ~/.zsh_functions ]; then
+if [ -f ~/.custom_functions/.aliases ]; then
   . ~/custom_functions/.aliases
 fi
 ```

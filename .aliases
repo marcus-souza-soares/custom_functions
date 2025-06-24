@@ -1,0 +1,196 @@
+# new git helper functions
+
+function reset_branch() {
+  git branch -D $1 && git fetch
+  git checkout $1
+}
+
+function rebase_this_to() {
+  current_branch=$(git branch --show-current)
+  reset-branch $1
+  git checkout $current_branch
+  git rebase -i origin/master4
+}
+
+function merge_this_to() {
+  current_branch=$(git branch --show-current)
+  reset-branch $1
+  git merge $current_branch
+}
+
+# pods functions
+function get-pods() {
+  local cur_env=$1
+  local load_cred=0
+  
+  if [[ $cur_env == "prod" ]] || [[ $cur_env == "beta" ]] || [[ $cur_env == "alpha" ]]; then
+    local cur_env=$cur_env"6"
+  fi
+  if [[ $cur_env == "alpha7" ]] || [[ $cur_env == "alpha8" ]]; then
+    gcloud container clusters get-credentials circlev2-australia --zone australia-southeast1-a
+    kubectl get pods -n $cur_env
+  else
+    gcloud container clusters get-credentials circle-prod --zone australia-southeast1-a
+    kubectl get pods | grep $cur_env
+  fi
+}
+
+function run-pod(){
+  local run_env=$1
+  local run_cmd=$2
+
+  if [[ -z $run_env ]] || [[ -z $run_cmd ]]; then
+    echo "Usage: run-pod [alpha || alpha7 || beta || prod] [m for migrations || c for rails console]"
+    return 0
+  fi
+
+  case $run_env in
+    prod|beta|alpha)
+      run_env="${run_env}7"
+      ;;
+  esac
+
+  local rails_version="${run_env: -1}"
+
+  case $run_env in
+    alpha7|alpha6)
+      local env_sufix="-n"
+      local env_sufix2=$run_env
+      ;;
+  esac
+
+  local suffix=$([[ $rails_version -eq "7" ]] && echo "${run_env}-0" || [[ $rails_version -eq "7" ]] && echo "${run_env}-0" || echo "")
+  local pod_name="$(get-pods ${run_env} | grep ${suffix}-puma-deploy | grep Running | cut -d' ' -f1 | head -1)"
+
+  if [[ -z $pod_name ]]; then
+    echo "No running pod found for environment: $run_env"
+    return 1
+  fi
+
+  case $run_cmd in
+    m)
+      set-title "($run_env) Migrating"
+      kubectl $env_sufix $env_sufix2 exec -it $pod_name -- bundle exec rake db:migrate
+      ;;
+    c)
+      set-title "($run_env) Rails C"
+      kubectl $env_sufix $env_sufix2 exec -it $pod_name -- bundle exec rails c
+      ;;
+    *)
+      echo "Invalid command: $run_cmd"
+      return 1
+      ;;
+  esac
+
+  set-title
+}
+
+function reset-branch() {
+  git branch -D $1 && git fetch && git checkout $1
+}
+
+function dc() {
+  if [[ $1 == "up" ]]; then
+    remove-pids
+    set-title "Localhost Server"
+    docker compose $1 $2 $3 $4 $5 $6 $7 && docker attach $(docker compose ps | grep circlesoft-app | cut -d' ' -f1 | head -1)
+  else
+    docker compose $1 $2 $3 $4 $5 $6 $7 $8 $9
+  fi
+  set-title
+}
+
+function set-title() {
+  if [[ -z $1 ]]; then
+     echo -ne '\033]0;Ubuntu\a'
+  else
+    echo -ne '\033]0;'"$1 $2 $3 $4 $5"'\a'
+  fi
+}
+
+function rails7() {
+  if [[ $1 == "c" ]]; then
+    set-title "R7.2 Console"
+  fi
+  dc run --rm app7 bundle exec rails $1 $2 $3 $4 $5 $6 $7 $8 $9
+  set-title
+}
+
+# rspec
+function rspec7() {
+  set-title "R7.2 RSpec Running";
+  dc run --rm app7 bundle exec rspec --force-color $1 $2 $3 $4 $5 $6 $7 $8 $9
+  set-title "Ubuntu (R7.2 RSpec Finished)"
+}
+
+# codecheck
+function codecheck() {
+  docker run --rm --user $(id -u):$(id -g) --volume $(pwd):/app --workdir /app circlepos/codecheck:1.1 pronto run -c origin/master4 --exit-code; echo $?;
+}
+
+# rubocop
+# function rubocop(){
+#   docker run --rm -v $(pwd):/app -w /app dmitryrck/ruby:ready1 pronto run --exit-code -c origin/master4;echo $?;
+# }
+
+# migrate
+function migrate(){
+  if [[ -z $1 ]]; then
+    echo "Env name is needed"
+  else
+    set-title "Running Migrations ($1)"
+    docker compose run --rm app7 bundle exec rake db:migrate RAILS_ENV=$1
+    set-title
+  fi
+}
+
+# test
+function test(){
+  if [[ -z $2 ]]; then
+    docker compose run --rm app7 bundle exec ruby -I test $1 RAILS_ENV=test
+  else
+    docker compose run --rm app7 bundle exec ruby -I test $1 -n $2 RAILS_ENV=test
+  fi
+}
+
+# sidekiq
+function run-sidekiq(){
+  if [[ -z $1 ]]; then
+    docker compose run --rm app7 bundle exec sidekiq -c 5 -q elastic_search -q import_data_processing -q default -q high_priority -q stock_logs -q low_priority -q load_stock -q pos -q site_product_es -q invoice_es -q product_es -q stock_log_es -q normal_priority -q available_stock_updater -q general_ledger
+  else
+    docker compose run --rm app7 bundle exec sidekiq -q $1
+  fi
+}
+
+function build-vue(){
+  docker compose run -e API_URL=/ --rm vue npm install
+  docker compose run -e API_URL=/ --rm vue npm run build
+}
+
+# vue 3
+function build-vue3(){
+  docker compose run -e VITE_API_URL=/ --rm --force-create vue3 npm install
+  docker compose run -e VITE_API_URL=/ --rm vue3 npm run build
+}
+
+# ngrok
+function start_ngrok(){
+  set-title 'ngrok'
+  if [[ -z $1 ]]; then
+    ngrok http localhost:3007
+  else
+    ngrok http localhost:$1
+  fi
+  set-title
+}
+
+function stp(){
+  set-title 'Stopping Service: $1'
+  sudo service $1 stop
+  set-title
+}
+
+
+alias remove-pids="echo 1203 | sudo -S rm tmp/pids/*"
+alias brave="brave-browser"
+alias stop-containers='docker stop $(docker ps -q) && docker container prune'

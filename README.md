@@ -2,8 +2,8 @@
 My custom functions and alias to improve the productivity.
 
 
-## Put this to your .zshrc file
-git clone on your personal path
+- `git clone <this-repo>` in your personal path
+- Put this in the your .zshrc file
 ```sh
 # custom functions
 if [ -f ~/.zsh_functions ]; then

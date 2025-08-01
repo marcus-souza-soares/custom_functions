@@ -111,19 +111,19 @@ function set-title() {
   fi
 }
 
-function rails7() {
+function rails8() {
   if [[ $1 == "c" ]]; then
-    set-title "R7.2 Console"
+    set-title "R8 Console"
   fi
-  dc run --rm app7 bundle exec rails $1 $2 $3 $4 $5 $6 $7 $8 $9
+  dc run --rm app8 bundle exec rails $1 $2 $3 $4 $5 $6 $7 $8 $9
   set-title
 }
 
 # rspec
-function rspec7() {
-  set-title "R7.2 RSpec Running";
-  dc run --rm app7 bundle exec rspec --force-color $1 $2 $3 $4 $5 $6 $7 $8 $9
-  set-title "Ubuntu (R7.2 RSpec Finished)"
+function rspec8() {
+  set-title "R8 RSpec Running";
+  dc run --rm app8 bundle exec rspec --force-color $1 $2 $3 $4 $5 $6 $7 $8 $9
+  set-title "Ubuntu (R8 RSpec Finished)"
 }
 
 # codecheck
@@ -142,7 +142,7 @@ function migrate(){
     echo "Env name is needed"
   else
     set-title "Running Migrations ($1)"
-    docker compose run --rm app7 bundle exec rake db:migrate RAILS_ENV=$1
+    docker compose run --rm app8 bundle exec rake db:migrate RAILS_ENV=$1
     set-title
   fi
 }
@@ -150,18 +150,18 @@ function migrate(){
 # test
 function test(){
   if [[ -z $2 ]]; then
-    docker compose run --rm app7 bundle exec ruby -I test $1 RAILS_ENV=test
+    docker compose run --rm app8 bundle exec ruby -I test $1 RAILS_ENV=test
   else
-    docker compose run --rm app7 bundle exec ruby -I test $1 -n $2 RAILS_ENV=test
+    docker compose run --rm app8 bundle exec ruby -I test $1 -n $2 RAILS_ENV=test
   fi
 }
 
 # sidekiq
 function run-sidekiq(){
   if [[ -z $1 ]]; then
-    docker compose run --rm app7 bundle exec sidekiq -c 5 -q elastic_search -q import_data_processing -q default -q high_priority -q stock_logs -q low_priority -q load_stock -q pos -q site_product_es -q invoice_es -q product_es -q stock_log_es -q normal_priority -q available_stock_updater -q general_ledger
+    docker compose run --rm app8 bundle exec sidekiq -c 5 -q elastic_search -q import_data_processing -q default -q high_priority -q stock_logs -q low_priority -q load_stock -q pos -q site_product_es -q invoice_es -q product_es -q stock_log_es -q normal_priority -q available_stock_updater -q general_ledger
   else
-    docker compose run --rm app7 bundle exec sidekiq -q $1
+    docker compose run --rm app8 bundle exec sidekiq -q $1
   fi
 }
 

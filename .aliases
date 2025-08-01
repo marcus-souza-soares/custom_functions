@@ -24,11 +24,11 @@ function get-pods() {
   local load_cred=0
   
   if [[ $cur_env == "prod" ]] || [[ $cur_env == "beta" ]] || [[ $cur_env == "alpha" ]]; then
-    local cur_env=$cur_env"6"
+    local cur_env=$cur_env"8"
   fi
-  if [[ $cur_env == "alpha7" ]] || [[ $cur_env == "alpha8" ]]; then
+  if [[ $cur_env == "alpha8" ]]; then
     gcloud container clusters get-credentials circlev2-australia --zone australia-southeast1-a
-    kubectl get pods -n $cur_env
+    kubectl get pods -n $cur_env | grep $cur_env
   else
     gcloud container clusters get-credentials circle-prod --zone australia-southeast1-a
     kubectl get pods | grep $cur_env
@@ -46,20 +46,23 @@ function run-pod(){
 
   case $run_env in
     prod|beta|alpha)
-      run_env="${run_env}7"
+      run_env="${run_env}8"
       ;;
   esac
 
   local rails_version="${run_env: -1}"
 
   case $run_env in
-    alpha7|alpha6)
+    alpha7|alpha8)
       local env_sufix="-n"
       local env_sufix2=$run_env
       ;;
   esac
 
-  local suffix=$([[ $rails_version -eq "7" ]] && echo "${run_env}-0" || [[ $rails_version -eq "7" ]] && echo "${run_env}-0" || echo "")
+  local suffix=""
+  if [[ "$rails_version" == "8" || "$rails_version" == "7" ]]; then
+    suffix="${run_env}-0"
+  fi
   local pod_name="$(get-pods ${run_env} | grep ${suffix}-puma-deploy | grep Running | cut -d' ' -f1 | head -1)"
 
   if [[ -z $pod_name ]]; then
@@ -162,14 +165,9 @@ function run-sidekiq(){
   fi
 }
 
-function build-vue(){
-  docker compose run -e API_URL=/ --rm vue npm install
-  docker compose run -e API_URL=/ --rm vue npm run build
-}
-
 # vue 3
 function build-vue3(){
-  docker compose run -e VITE_API_URL=/ --rm --force-create vue3 npm install
+  docker compose run -e VITE_API_URL=/ --rm vue3 npm install
   docker compose run -e VITE_API_URL=/ --rm vue3 npm run build
 }
 
@@ -177,7 +175,7 @@ function build-vue3(){
 function start_ngrok(){
   set-title 'ngrok'
   if [[ -z $1 ]]; then
-    ngrok http localhost:3007
+    ngrok http localhost:3008
   else
     ngrok http localhost:$1
   fi

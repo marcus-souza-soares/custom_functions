@@ -80,8 +80,8 @@ function run-pod(){
       kubectl $env_sufix $env_sufix2 exec -it $pod_name -- bundle exec rails c
       ;;
     *)
-      echo "Invalid command: $run_cmd"
-      return 1
+      set-title "($run_env) Rails CMD: $run_cmd"
+      kubectl $env_sufix $env_sufix2 exec -it $pod_name -- bundle exec rails $run_cmd
       ;;
   esac
 

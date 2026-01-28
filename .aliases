@@ -191,4 +191,4 @@ function stp(){
 
 alias remove-pids="echo 1203 | sudo -S rm tmp/pids/*"
 alias brave="brave-browser"
-alias stop-containers='docker stop $(docker ps -q) && docker container prune'
+alias stop-containers='docker stop $(docker ps -q) &> /dev/null && docker container prune'

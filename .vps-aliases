@@ -1,0 +1,19 @@
+start-cloud() {
+    echo -ne "\033]0;Oracle Ubuntu\007" &&
+    local command
+    command=$(printf '%q ' "$@")
+    ssh -t \
+        -o ServerAliveInterval=60 \
+        -o ServerAliveCountMax=3 \
+        -i ~/Downloads/ssh-key-2026-07-10.key \
+        -X ubuntu@163.176.162.87 \
+        "zsh -i -c '${command}; exec zsh -i'"
+}
+
+send-image() {
+    local file="${1:?uso: send-image <arquivo>}"
+    local remote="/tmp/$(basename "$file")"
+
+    scp -i ~/Downloads/ssh-key-2026-07-10.key "$file" "ubuntu@163.176.162.87:$remote" \
+        && echo "$remote"
+}
